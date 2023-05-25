@@ -3,7 +3,9 @@ Simple script to count the number of overlapping or closest features between one
 
 ## Installation
 `git clone https://github.com/efriman/overlap_peak_tables.git`
+
 `cd overlap_peak_tables`
+
 `pip install .`
 
 ## Usage
@@ -14,6 +16,7 @@ overlap_peak_tables takes a base bed which you want to overlap multiple other be
 
 ## Inputs and outputs (examples)
 `overlap_peak_tables base_bed.bed --overlap_features overlap_features.bed --output outfile.bed`
+
 base_bed.bed
 | chrom  | start | end |
 | ------------- | ------------- | ------------- |
