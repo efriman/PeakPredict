@@ -26,12 +26,14 @@ def load_bed(bed_file,
         if "coords" in names:
             logging.info("Overwriting column named coords, rename if needed")
         features["coords"] = features["chrom"] + "_" + features["start"].astype(str) + "_" + features["end"].astype(str)
-    return features
+    return features, np.any(features["chrom"].str.contains("chr"))
     
-def count_overlaps(base_features, overlap_bed_file, boolean_output=False):
+def count_overlaps(base_features, overlap_bed_file, chr_or_no, boolean_output=False):
     if overlap_bed_file in base_features.columns:
         raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
-    overlap_peaks = load_bed(overlap_bed_file)
+    overlap_peaks, chr_feature = load_bed(overlap_bed_file)
+    if chr_or_no != chr_feature:
+        warnings.warn("Base bed/features have mixed chrososome naming (i.e. using chr or not)")
     overlap = bioframe.overlap(base_features, overlap_peaks, how='both', suffixes=['', '_'])
     if not boolean_output:
         overlap_counts = overlap.groupby("coords").size().reset_index()
@@ -44,10 +46,12 @@ def count_overlaps(base_features, overlap_bed_file, boolean_output=False):
         features[overlap_bed_file] = np.where(features["coords"].isin(list(overlap["coords"])), True, False)
     return features
 
-def count_closest(base_features, overlap_bed_file, k=100, mindist=1, maxdist=1_000_000):
+def count_closest(base_features, overlap_bed_file, chr_or_no, k=100, mindist=1, maxdist=1_000_000):
     if overlap_bed_file in base_features.columns:
         raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
-    overlap_peaks = load_bed(overlap_bed_file)
+    overlap_peaks, chr_feature = load_bed(overlap_bed_file)
+    if chr_or_no != chr_feature:
+        warnings.warn("Base bed/features have mixed chrososome naming (i.e. using chr or not)")
     ignore_overlaps = False if maxdist==0 else True
     closest = bioframe.closest(base_features, overlap_peaks, k=k, ignore_overlaps=ignore_overlaps)
     closest = closest.loc[(closest["distance"] <= maxdist) &
@@ -70,12 +74,14 @@ def parse_args_overlap_count_tables():
     )
     parser.add_argument(
         "--overlap_features",
+        "--overlap-features",
         type=str,
         nargs="+",
         required=True,
         help="""bed files you want to check overlap with""",
     )
     parser.add_argument(
+        "--output",
         "--outname",
         "--o",
         type=str,
@@ -84,6 +90,7 @@ def parse_args_overlap_count_tables():
     )
     parser.add_argument(
         "--boolean_output",
+        "--boolean-output",
         action="store_true",
         default=False,
         required=False,
@@ -131,23 +138,31 @@ def main():
               "start": np.int64,
               "end": np.int64,}
     
-    base_peaks = load_bed(args.base_bed, 
-                          schema=schema,
-                          dtypes=dtypes,
-                          coord_column=True)
+    base_peaks, chr_or_no = load_bed(args.base_bed, 
+                                     schema=schema,
+                                     dtypes=dtypes,
+                                     coord_column=True)
     
     if args.closest:
         for overlap_feature in args.overlap_features:
             logging.info(f"Counting the number of overlapping features with {overlap_feature} within {args.mindist} and {args.maxdist} bp (up to {args.k} allowed, change with --k)")
-            base_peaks = count_closest(base_peaks, overlap_feature, k=args.k, mindist=args.mindist, maxdist=args.maxdist)
+            base_peaks = count_closest(base_peaks, 
+                                       overlap_feature, 
+                                       chr_or_no=chr_or_no,
+                                       k=args.k, 
+                                       mindist=args.mindist, 
+                                       maxdist=args.maxdist)
     else:
         for overlap_feature in args.overlap_features:
             logging.info(f"Checking overlaps with {overlap_feature}")
-            base_peaks = count_overlaps(base_peaks, overlap_feature, boolean_output=args.boolean_output)
+            base_peaks = count_overlaps(base_peaks, 
+                                        overlap_feature,
+                                        chr_or_no=chr_or_no,
+                                        boolean_output=args.boolean_output)
     
-    base_peaks.drop(columns="coords").to_csv(args.outname, sep="\t", index=False, header=True)
+    base_peaks.drop(columns="coords").to_csv(args.output, sep="\t", index=False, header=True)
     
-    logging.info(f"Saved output file as {args.outname}")
+    logging.info(f"Saved output file as {args.output}")
 
 
 if __name__ == '__main__':
