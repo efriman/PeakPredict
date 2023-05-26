@@ -14,7 +14,7 @@ It can also run models to make predictions of a feature based on these overlaps.
 
 overlap_peak_tables takes a base bed which you want to overlap multiple other bedfiles with (`--overlap_features`). BED files need to either be without headers or contain at least the headers `chrom`, `start`, and `end`. By default, it quantifies the number of peaks overlapping each peak in the base_bed (0/1/2 etc). If you prefer you can set `--boolean_output` to get True/False overlaps. You can also run it with `--closest` to get the number of peaks in vicinity of the peak (parameters for this are `--k`, `--mindist`, and `--maxdist`).
 
-To run predictions based on the peak overlaps, set `--prediction_column` to the column in the base_bed you want to predict. Other options for the prediction are `--model`, `--test_size`, `--seed`, and `--plot_size`. By default, the prediction is done using LogisticRegression with `test_size` 0.3 (30%/70% test/training split) without a set seed. Outputs from predictions are:
+To run predictions based on the peak overlaps, set `--predict_column` to the column in the base_bed you want to predict. Other options for the prediction are `--model`, `--test_size`, `--seed`, and `--plot_size`. By default, the prediction is done using LogisticRegression with `test_size` 0.3 (30%/70% test/training split) without a set seed. Outputs from predictions are:
 
 -Correlation matrix between predictors and feature to be predicted
 
