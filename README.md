@@ -29,39 +29,7 @@ Predictions can also be done on any input table using
 
 `predict_features input_table.tsv --predict_column predict_this --predictor_columns [...] --outname outfile [OPTIONS]`
 
-Available models are the following (from scikit-learn, https://scikit-learn.org/):
-
-LogisticRegression
-
-SVC
-
-GaussianNB
-
-MultinomialNB
-
-SGDClassifier
-
-KNeighborsClassifier
-
-DecisionTreeClassifier
-
-RandomForestClassifier
-
-GradientBoostingClassifier
-
-LinearRegression
-
-SGDRegressor
-
-KernelRidge
-
-ElasticNet
-
-BayesianRidge
-
-GradientBoostingRegressor
-
-SVR
+All models from [scikit-learn](https://scikit-learn.org/) are available to use. Beware that some models might require categorical or numerical values specifically.
 
 
 ## Example inputs and output

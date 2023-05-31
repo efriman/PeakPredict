@@ -9,6 +9,8 @@ import argparse
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import matthews_corrcoef
 from sklearn.inspection import permutation_importance
+import sklearn
+from sklearn import *
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -95,45 +97,14 @@ def predict_features(input_table, predict_column, predictor_columns, model,
         logging.debug("Can't correlate features with categorical outcome variable, plotting only predictor correlations")
         corr_matrix = X_train.corr()
 
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.svm import SVC
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.naive_bayes import MultinomialNB
-    from sklearn.linear_model import SGDClassifier
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.linear_model import LinearRegression
-    from sklearn.linear_model import SGDRegressor
-    from sklearn.kernel_ridge import KernelRidge
-    from sklearn.linear_model import ElasticNet
-    from sklearn.linear_model import BayesianRidge
-    from sklearn.ensemble import GradientBoostingRegressor
-    from sklearn.svm import SVR
+    for module in dir(sklearn):
+        if model in dir(eval(f"sklearn.{module}")):
+            logging.info(f"Predicting {predict_column} using sklearn.{module}.{model}")
+            model = eval(f"sklearn.{module}.{model}")()
+            break
+    if isinstance(model, str):
+        raise ValueError(f"{model} doesn't exist in sklearn")
 
-    model_dict = {"LogisticRegression":LogisticRegression,
-            "SVC":SVC,
-            "GaussianNB":GaussianNB,
-            "MultinomialNB":MultinomialNB,
-            "SGDClassifier":SGDClassifier,
-            "KNeighborsClassifier":KNeighborsClassifier,
-            "DecisionTreeClassifier":DecisionTreeClassifier,
-            "RandomForestClassifier":RandomForestClassifier,
-            "GradientBoostingClassifier":GradientBoostingClassifier,
-            "LinearRegression":LinearRegression,
-            "SGDRegressor":SGDRegressor,
-            "KernelRidge":KernelRidge,
-            "ElasticNet":ElasticNet,
-            "BayesianRidge":BayesianRidge,
-            "GradientBoostingRegressor":GradientBoostingRegressor,
-            "SVR":SVR,}
-
-    if model not in model_dict.keys():
-        raise ValueError(f"{model} is not available")
-
-    logging.info(f"Predicting {predict_column} using {model}")
-    model = model_dict[model]()
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     mcc = matthews_corrcoef(y_test, y_pred)
