@@ -34,7 +34,8 @@ setup(
     packages=["overlap_peak_tables", "overlap_peak_tables.lib"],
     entry_points={
         "console_scripts": [
-            "overlap_peak_tables = overlap_peak_tables.overlap_peak_tables:main",
+            "overlap_peak_tables = overlap_peak_tables.overlap_peak_tables_CLI:main",
+            "predict_features = overlap_peak_tables.predict_features_CLI:main",
         ]
     },
     setup_requires=setup_requires,

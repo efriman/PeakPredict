@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 
 logging.basicConfig(format="%(message)s", level='INFO')
 
+def check_chr_naming(peaks1, peaks2):
+    return np.any(peaks1["chrom"].str.contains("chr")) != np.any(peaks2["chrom"].str.contains("chr"))
+
 def count_overlaps(base_peaks, overlap_peaks, overlap_column_name, boolean_output=False):
     if "coords" not in base_peaks.columns:
         base_peaks["coords"] = base_peaks["chrom"] + "_" + base_peaks["start"].astype(str) + "_" + base_peaks["end"].astype(str)

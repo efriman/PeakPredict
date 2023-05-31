@@ -3,7 +3,7 @@ import pandas as pd
 import bioframe
 import numpy as np
 from overlap_peak_tables.lib.io import load_bed
-from overlap_peak_tables.overlap_predict import count_closest, count_overlaps, predict_features
+from overlap_peak_tables.overlap_predict import check_chr_naming, count_closest, count_overlaps, predict_features
 import logging
 import warnings
 import argparse
@@ -171,6 +171,8 @@ def main():
                 raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
             else:
                 overlap_peaks = load_bed(overlap_feature, schema=schema, dtypes=dtypes)
+                if check_chr_naming(overlap_table, overlap_peaks):
+                    warnings.warn("The peak files have inconsistent naming with regards to using 'chr'")
                 overlap_table = count_closest(overlap_table, 
                                               overlap_peaks, 
                                               overlap_feature,
@@ -184,6 +186,8 @@ def main():
                 raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
             else:
                 overlap_peaks = load_bed(overlap_feature, schema=schema, dtypes=dtypes)
+                if check_chr_naming(overlap_table, overlap_peaks):
+                    warnings.warn("The peak files have inconsistent naming with regards to using 'chr'")
                 overlap_table = count_overlaps(overlap_table, 
                                                overlap_peaks,
                                                overlap_feature,
