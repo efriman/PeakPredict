@@ -5,6 +5,7 @@ import pandas as pd
 import bioframe
 import numpy as np
 import logging
+import gzip
 
 def is_gz_file(filepath):
     with open(filepath, "rb") as test_f:
