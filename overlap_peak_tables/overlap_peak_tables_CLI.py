@@ -14,18 +14,16 @@ from sklearn.metrics import ConfusionMatrixDisplay
 warnings.filterwarnings(action="ignore", message=".*tight_layout.*")
 warnings.filterwarnings(action="ignore", message=".*Tight layout.*")
 warnings.filterwarnings(action="ignore", message=r".*index_col*")
-warnings.simplefilter(action='ignore', category=FutureWarning)
-logging.basicConfig(format="%(message)s", level='INFO')
+warnings.simplefilter(action="ignore", category=FutureWarning)
+logging.basicConfig(format="%(message)s", level="INFO")
 
-    
+
 def parse_args_overlap_count_tables():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        "base_bed", 
-        type=str, 
-        help="bed file you want to overlap other features with"
+        "base_bed", type=str, help="bed file you want to overlap other features with"
     )
     parser.add_argument(
         "--overlap_features",
@@ -153,126 +151,212 @@ def parse_args_overlap_count_tables():
 
     return parser
 
+
 def main():
     parser = parse_args_overlap_count_tables()
     args = parser.parse_args()
 
     logging.debug(args)
-    
-    if args.bedpe: 
+
+    if args.bedpe:
         schema = "bedpe"
-        dtypes = {"chrom1": str,
-                  "start1": np.int64,
-                  "end1": np.int64,
-                  "chrom2": str,
-                  "start2": np.int64,
-                  "end2": np.int64,}
+        dtypes = {
+            "chrom1": str,
+            "start1": np.int64,
+            "end1": np.int64,
+            "chrom2": str,
+            "start2": np.int64,
+            "end2": np.int64,
+        }
     else:
         schema = "bed3"
-        dtypes = {"chrom": str,
-                  "start": np.int64,
-                  "end": np.int64,}
-    
+        dtypes = {
+            "chrom": str,
+            "start": np.int64,
+            "end": np.int64,
+        }
+
     base_peaks = load_bed(args.base_bed, schema=schema, dtypes=dtypes)
-    
+
     if "coords" in base_peaks.columns:
         warnings.warn("column named coords will be removed")
-        
+
     overlap_table = base_peaks.copy()
-    
+
     if args.closest:
-        logging.info(f"Counting the number of peaks within {args.mindist} and {args.maxdist} bp (up to {args.k} allowed, change with --k)")
+        logging.info(
+            f"Counting the number of peaks within {args.mindist} and {args.maxdist} bp (up to {args.k} allowed, change with --k)"
+        )
         for overlap_feature in args.overlap_features:
             if overlap_feature in overlap_table.columns:
-                raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
+                raise ValueError(
+                    f"base peaks already contains a column with name {overlap_bed_file}"
+                )
             else:
-                overlap_peaks = load_bed(overlap_feature, schema="bed3", dtypes={"chrom": str,
-                                                                                 "start": np.int64,
-                                                                                 "end": np.int64,})
+                overlap_peaks = load_bed(
+                    overlap_feature,
+                    schema="bed3",
+                    dtypes={
+                        "chrom": str,
+                        "start": np.int64,
+                        "end": np.int64,
+                    },
+                )
                 if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
-                    warnings.warn("The peak files have inconsistent naming with regards to using 'chr'")
+                    warnings.warn(
+                        "The peak files have inconsistent naming with regards to using 'chr'"
+                    )
                 if args.bedpe:
-                    overlap_table = count_closest_bedpe(overlap_table, 
-                                                        overlap_peaks, 
-                                                        overlap_feature,
-                                                        k=args.k, 
-                                                        mindist=args.mindist, 
-                                                        maxdist=args.maxdist)
+                    overlap_table = count_closest_bedpe(
+                        overlap_table,
+                        overlap_peaks,
+                        overlap_feature,
+                        k=args.k,
+                        mindist=args.mindist,
+                        maxdist=args.maxdist,
+                    )
                 else:
-                    overlap_table = count_closest(overlap_table, 
-                                                  overlap_peaks, 
-                                                  overlap_feature,
-                                                  k=args.k, 
-                                                  mindist=args.mindist, 
-                                                  maxdist=args.maxdist)
+                    overlap_table = count_closest(
+                        overlap_table,
+                        overlap_peaks,
+                        overlap_feature,
+                        k=args.k,
+                        mindist=args.mindist,
+                        maxdist=args.maxdist,
+                    )
     else:
         logging.info(f"Counting overlaps")
         for overlap_feature in args.overlap_features:
             if overlap_feature in overlap_table.columns:
-                raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
+                raise ValueError(
+                    f"base peaks already contains a column with name {overlap_bed_file}"
+                )
             else:
-                overlap_peaks = load_bed(overlap_feature, schema="bed3", dtypes={"chrom": str,
-                                                                                 "start": np.int64,
-                                                                                 "end": np.int64,})
+                overlap_peaks = load_bed(
+                    overlap_feature,
+                    schema="bed3",
+                    dtypes={
+                        "chrom": str,
+                        "start": np.int64,
+                        "end": np.int64,
+                    },
+                )
                 if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
-                    warnings.warn("The peak files have inconsistent naming with regards to using 'chr'")
+                    warnings.warn(
+                        "The peak files have inconsistent naming with regards to using 'chr'"
+                    )
                 if args.bedpe:
-                    overlap_table = count_overlaps_bedpe(overlap_table, 
-                                                         overlap_peaks,
-                                                         overlap_feature,
-                                                         boolean_output=args.boolean_output)
+                    overlap_table = count_overlaps_bedpe(
+                        overlap_table,
+                        overlap_peaks,
+                        overlap_feature,
+                        boolean_output=args.boolean_output,
+                    )
                 else:
-                    overlap_table = count_overlaps(overlap_table, 
-                                                   overlap_peaks,
-                                                   overlap_feature,
-                                                   boolean_output=args.boolean_output)
-                    
-    overlap_table.to_csv(f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True)
+                    overlap_table = count_overlaps(
+                        overlap_table,
+                        overlap_peaks,
+                        overlap_feature,
+                        boolean_output=args.boolean_output,
+                    )
+
+    overlap_table.to_csv(
+        f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True
+    )
     logging.info(f"Saved overlap table as {args.outdir}/{args.outname}.tsv")
 
-    if args.column_type and not set([args.column_type]).issubset(set(["categorical", "numerical"])):
-        warnings.warn("--column type must be either 'categorical' or 'numerical', auto detecting instead")
+    if args.column_type and not set([args.column_type]).issubset(
+        set(["categorical", "numerical"])
+    ):
+        warnings.warn(
+            "--column type must be either 'categorical' or 'numerical', auto detecting instead"
+        )
         args.column_type = False
-        
+
     if args.seed:
         random_state = args.seed
     else:
         random_state = None
-    
+
     if args.predict_column is not None:
-        predictor_columns = [col for col in list(overlap_table.columns) if col not in (base_peaks.columns)]
+        predictor_columns = [
+            col
+            for col in list(overlap_table.columns)
+            if col not in (base_peaks.columns)
+        ]
         predictor_columns
 
-        corr_matrix, predictions, feature_importance = predict_features(overlap_table, 
-                                                                        predict_column=args.predict_column, 
-                                                                        predictor_columns=predictor_columns, 
-                                                                        model=args.model,
-                                                                        test_size=args.test_size, 
-                                                                        random_state=random_state, 
-                                                                        cat_or_num=args.column_type)
+        corr_matrix, predictions, feature_importance = predict_features(
+            overlap_table,
+            predict_column=args.predict_column,
+            predictor_columns=predictor_columns,
+            model=args.model,
+            test_size=args.test_size,
+            random_state=random_state,
+            cat_or_num=args.column_type,
+        )
 
-        g = sns.clustermap(corr_matrix, cmap="coolwarm", vmin=-1, vmax=1, 
-                           yticklabels=True, xticklabels=True,
-                           figsize=(args.plot_size,args.plot_size))
+        g = sns.clustermap(
+            corr_matrix,
+            cmap="coolwarm",
+            vmin=-1,
+            vmax=1,
+            yticklabels=True,
+            xticklabels=True,
+            figsize=(args.plot_size, args.plot_size),
+        )
         g.savefig(f"{args.outdir}/{args.outname}_corr_features.png", dpi=100)
-        logging.debug(f"Saved predictor correlations as {args.outdir}/{args.outname}_corr_features.png")
-        
-        predictions.to_csv(f"{args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv", sep="\t", index=False, header=True)
-        logging.debug(f"Saved predictions of test data as {args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv")
+        logging.debug(
+            f"Saved predictor correlations as {args.outdir}/{args.outname}_corr_features.png"
+        )
 
-        ConfusionMatrixDisplay.from_predictions(predictions[args.predict_column], 
-                                                predictions[f"{args.predict_column}_pred"])
+        predictions.to_csv(
+            f"{args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv",
+            sep="\t",
+            index=False,
+            header=True,
+        )
+        logging.debug(
+            f"Saved predictions of test data as {args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv"
+        )
+
+        ConfusionMatrixDisplay.from_predictions(
+            predictions[args.predict_column], predictions[f"{args.predict_column}_pred"]
+        )
         plt.tight_layout()
         plt.xticks(rotation=90)
-        plt.savefig(f"{args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png", dpi=300, bbox_inches="tight")
-        logging.debug(f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png")
-        
-        feature_importance.to_csv(f"{args.outdir}/{args.outname}_{args.model}_feature_importance.tsv", sep="\t", index=False)
-        plt.figure(figsize=(args.plot_size,args.plot_size))
-        sns.barplot(data=feature_importance, x='Feature', y='Importance', color="skyblue", edgecolor="black")
-        plt.xticks(rotation=45, ha="right")
-        plt.savefig(f"{args.outdir}/{args.outname}_{args.model}_feature_importance.png", dpi=300, bbox_inches="tight")
-        logging.debug(f"Saved feature importance as {args.outdir}/{args.outname}_{args.model}_feature_importance.tsv and {args.outdir}/{args.outname}_{args.model}_feature_importance.png")
+        plt.savefig(
+            f"{args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        logging.debug(
+            f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
+        )
 
-if __name__ == '__main__':
+        feature_importance.to_csv(
+            f"{args.outdir}/{args.outname}_{args.model}_feature_importance.tsv",
+            sep="\t",
+            index=False,
+        )
+        plt.figure(figsize=(args.plot_size, args.plot_size))
+        sns.barplot(
+            data=feature_importance,
+            x="Feature",
+            y="Importance",
+            color="skyblue",
+            edgecolor="black",
+        )
+        plt.xticks(rotation=45, ha="right")
+        plt.savefig(
+            f"{args.outdir}/{args.outname}_{args.model}_feature_importance.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        logging.debug(
+            f"Saved feature importance as {args.outdir}/{args.outname}_{args.model}_feature_importance.tsv and {args.outdir}/{args.outname}_{args.model}_feature_importance.png"
+        )
+
+
+if __name__ == "__main__":
     main()
