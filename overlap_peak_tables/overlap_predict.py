@@ -16,33 +16,79 @@ import matplotlib.pyplot as plt
 
 logging.basicConfig(format="%(message)s", level='INFO')
 
-def check_chr_naming(peaks1, peaks2):
-    return np.any(peaks1["chrom"].str.contains("chr")) != np.any(peaks2["chrom"].str.contains("chr"))
+def check_chr_naming(peaks1, peaks2, bedpe=False):
+    if bedpe:
+        return np.any(peaks1["chrom1"].str.contains("chr")) != np.any(peaks2["chrom"].str.contains("chr"))
+    else:
+        return np.any(peaks1["chrom"].str.contains("chr")) != np.any(peaks2["chrom"].str.contains("chr"))
 
 def count_overlaps(base_peaks, overlap_peaks, overlap_column_name, boolean_output=False):
-    if "coords" not in base_peaks.columns:
-        base_peaks["coords"] = base_peaks["chrom"] + "_" + base_peaks["start"].astype(str) + "_" + base_peaks["end"].astype(str)
-    overlap = bioframe.overlap(base_peaks, overlap_peaks, how='both', suffixes=['', '_'])
+    overlap_table = base_peaks.copy()
+    overlap_table["coords"] = overlap_table["chrom"] + "_" + overlap_table["start"].astype(str) + "_" + overlap_table["end"].astype(str)
+    overlap = bioframe.overlap(overlap_table, overlap_peaks, how='both', suffixes=['', '_'])
     overlap_counts = overlap.groupby("coords").size().reset_index()
     overlap_counts.columns = ["coords", overlap_column_name]
-    overlap = pd.merge(base_peaks, overlap_counts, on="coords", how="left").fillna(0)
+    overlap = pd.merge(overlap_table, overlap_counts, on="coords", how="left").fillna(0)
     overlap[overlap_column_name] = overlap[overlap_column_name].astype(int)
+    overlap = overlap.drop(columns="coords")
     if boolean_output:
         overlap[overlap_column_name] = np.where(overlap[overlap_column_name] > 0, True, False)
     return overlap
 
 def count_closest(base_peaks, overlap_peaks, overlap_column_name, k=100, mindist=0, maxdist=1_000_000):
-    if "coords" not in base_peaks.columns:
-        base_peaks["coords"] = base_peaks["chrom"] + "_" + base_peaks["start"].astype(str) + "_" + base_peaks["end"].astype(str)
+    overlap_table = base_peaks.copy()
+    overlap_table["coords"] = overlap_table["chrom"] + "_" + overlap_table["start"].astype(str) + "_" + overlap_table["end"].astype(str)
     ignore_overlaps = False if mindist==0 else True
-    closest = bioframe.closest(base_peaks, overlap_peaks, k=k, ignore_overlaps=ignore_overlaps)
+    closest = bioframe.closest(overlap_table, overlap_peaks, k=k, ignore_overlaps=ignore_overlaps)
     closest = closest.loc[(closest["distance"] <= maxdist) &
                           (closest["distance"] >= mindist),:]
     count_closest = closest.groupby("coords").size().reset_index()
     count_closest.columns = ["coords", overlap_column_name]
-    closest = pd.merge(base_peaks, count_closest, on="coords", how="left").fillna(0)
+    closest = pd.merge(overlap_table, count_closest, on="coords", how="left").fillna(0)
     closest[overlap_column_name] = closest[overlap_column_name].astype(int)
+    closest = closest.drop(columns="coords")
     return closest
+
+def count_overlaps_bedpe(base_peaks, overlap_peaks, overlap_column_name, boolean_output=False):
+    overlap_combined = base_peaks
+    for side in [1, 2]:
+        side_peaks = base_peaks[[f"chrom{side}", f"start{side}", f"end{side}"]].copy()
+        side_peaks.columns = ["chrom", "start", "end"]
+        side_peaks["coords"] = side_peaks["chrom"] + "_" + side_peaks["start"].astype(str) + "_" + side_peaks["end"].astype(str)
+        side_peaks = side_peaks.drop_duplicates()
+        overlap = bioframe.overlap(side_peaks, overlap_peaks, how='both', suffixes=['', '_'])
+        overlap_counts = overlap.groupby("coords").size().reset_index()
+        overlap_counts.columns = ["coords", f"{overlap_column_name}{side}"]
+        overlap = pd.merge(side_peaks, overlap_counts, on="coords", how="left").fillna(0)
+        overlap[f"{overlap_column_name}{side}"] = overlap[f"{overlap_column_name}{side}"].astype(int)
+        overlap = overlap.drop(columns="coords")
+        if boolean_output:
+            overlap[f"{overlap_column_name}{side}"] = np.where(overlap[f"{overlap_column_name}{side}"] > 0, True, False)
+        overlap.columns = [f"chrom{side}", f"start{side}", f"end{side}", f"{overlap_column_name}{side}"]
+        overlap_combined = pd.merge(overlap_combined, overlap, on=[f"chrom{side}", f"start{side}", f"end{side}"])
+    return overlap_combined
+
+def count_closest_bedpe(base_peaks, overlap_peaks, overlap_column_name, k=100, mindist=0, maxdist=1_000_000):
+    ignore_overlaps = False if mindist==0 else True
+    closest_combined = base_peaks
+    for side in [1, 2]:
+        side_peaks = base_peaks[[f"chrom{side}", f"start{side}", f"end{side}"]].copy()
+        side_peaks.columns = ["chrom", "start", "end"]
+        side_peaks["coords"] = side_peaks["chrom"] + "_" + side_peaks["start"].astype(str) + "_" + side_peaks["end"].astype(str)
+        side_peaks = side_peaks.drop_duplicates()
+        
+        
+        closest = bioframe.closest(side_peaks, overlap_peaks, k=k, ignore_overlaps=ignore_overlaps)
+        closest = closest.loc[(closest["distance"] <= maxdist) &
+                              (closest["distance"] >= mindist),:]
+        count_closest = closest.groupby("coords").size().reset_index()
+        count_closest.columns = ["coords", f"{overlap_column_name}{side}"]
+        closest = pd.merge(side_peaks, count_closest, on="coords", how="left").fillna(0)
+        closest[f"{overlap_column_name}{side}"] = closest[f"{overlap_column_name}{side}"].astype(int)
+        closest = closest.drop(columns="coords")
+        closest.columns = [f"chrom{side}", f"start{side}", f"end{side}", f"{overlap_column_name}{side}"]
+        closest_combined = pd.merge(closest_combined, closest, on=[f"chrom{side}", f"start{side}", f"end{side}"])
+    return closest_combined
 
 def extract_test_train(input_table, predict_column, predictor_columns, test_size=0.3, random_state=None):
     X = input_table[predictor_columns]

@@ -3,7 +3,7 @@ import pandas as pd
 import bioframe
 import numpy as np
 from overlap_peak_tables.lib.io import load_bed
-from overlap_peak_tables.overlap_predict import check_chr_naming, count_closest, count_overlaps, predict_features
+from overlap_peak_tables.overlap_predict import *
 import logging
 import warnings
 import argparse
@@ -47,6 +47,13 @@ def parse_args_overlap_count_tables():
         type=str,
         required=True,
         help="""Prefix for output files. This should NOT be the path to a directory (set with --outdir)""",
+    )
+    parser.add_argument(
+        "--bedpe",
+        action="store_true",
+        default=False,
+        required=False,
+        help="""Specify if you have a bedpe file as base_bed. Will count overlap on each side separately""",
     )
     parser.add_argument(
         "--boolean_output",
@@ -152,10 +159,19 @@ def main():
 
     logging.debug(args)
     
-    schema = "bed3"
-    dtypes = {"chrom": str,
-              "start": np.int64,
-              "end": np.int64,}
+    if args.bedpe: 
+        schema = "bedpe"
+        dtypes = {"chrom1": str,
+                  "start1": np.int64,
+                  "end1": np.int64,
+                  "chrom2": str,
+                  "start2": np.int64,
+                  "end2": np.int64,}
+    else:
+        schema = "bed3"
+        dtypes = {"chrom": str,
+                  "start": np.int64,
+                  "end": np.int64,}
     
     base_peaks = load_bed(args.base_bed, schema=schema, dtypes=dtypes)
     
@@ -170,30 +186,48 @@ def main():
             if overlap_feature in overlap_table.columns:
                 raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
             else:
-                overlap_peaks = load_bed(overlap_feature, schema=schema, dtypes=dtypes)
-                if check_chr_naming(overlap_table, overlap_peaks):
+                overlap_peaks = load_bed(overlap_feature, schema="bed3", dtypes={"chrom": str,
+                                                                                 "start": np.int64,
+                                                                                 "end": np.int64,})
+                if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
                     warnings.warn("The peak files have inconsistent naming with regards to using 'chr'")
-                overlap_table = count_closest(overlap_table, 
-                                              overlap_peaks, 
-                                              overlap_feature,
-                                              k=args.k, 
-                                              mindist=args.mindist, 
-                                              maxdist=args.maxdist)
+                if args.bedpe:
+                    overlap_table = count_closest_bedpe(overlap_table, 
+                                                        overlap_peaks, 
+                                                        overlap_feature,
+                                                        k=args.k, 
+                                                        mindist=args.mindist, 
+                                                        maxdist=args.maxdist)
+                else:
+                    overlap_table = count_closest(overlap_table, 
+                                                  overlap_peaks, 
+                                                  overlap_feature,
+                                                  k=args.k, 
+                                                  mindist=args.mindist, 
+                                                  maxdist=args.maxdist)
     else:
         logging.info(f"Counting overlaps")
         for overlap_feature in args.overlap_features:
             if overlap_feature in overlap_table.columns:
                 raise ValueError(f"base peaks already contains a column with name {overlap_bed_file}")
             else:
-                overlap_peaks = load_bed(overlap_feature, schema=schema, dtypes=dtypes)
-                if check_chr_naming(overlap_table, overlap_peaks):
+                overlap_peaks = load_bed(overlap_feature, schema="bed3", dtypes={"chrom": str,
+                                                                                 "start": np.int64,
+                                                                                 "end": np.int64,})
+                if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
                     warnings.warn("The peak files have inconsistent naming with regards to using 'chr'")
-                overlap_table = count_overlaps(overlap_table, 
-                                               overlap_peaks,
-                                               overlap_feature,
-                                               boolean_output=args.boolean_output)
-
-    overlap_table.drop(columns="coords").to_csv(f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True)
+                if args.bedpe:
+                    overlap_table = count_overlaps_bedpe(overlap_table, 
+                                                         overlap_peaks,
+                                                         overlap_feature,
+                                                         boolean_output=args.boolean_output)
+                else:
+                    overlap_table = count_overlaps(overlap_table, 
+                                                   overlap_peaks,
+                                                   overlap_feature,
+                                                   boolean_output=args.boolean_output)
+                    
+    overlap_table.to_csv(f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True)
     logging.info(f"Saved overlap table as {args.outdir}/{args.outname}.tsv")
 
     if args.column_type and not set([args.column_type]).issubset(set(["categorical", "numerical"])):
@@ -207,7 +241,7 @@ def main():
     
     if args.predict_column is not None:
         predictor_columns = [col for col in list(overlap_table.columns) if col not in (base_peaks.columns)]
-        predictor_columns.remove("coords")
+        predictor_columns
 
         corr_matrix, predictions, feature_importance = predict_features(overlap_table, 
                                                                         predict_column=args.predict_column, 
