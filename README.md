@@ -94,4 +94,4 @@ outfile.tsv
 | chr1  | 5000  | 5300 | 1 | 0 |
 
 ## Walkthrough
-An walkthrough of basic examples can be found here: [Walkthrough] (https://github.com/efriman/overlap_peak_tables/blob/main/overlap_peak_tables/docs/Walkthrough_examples.ipynb)
+An walkthrough of basic examples can be found here: [Walkthrough](https://github.com/efriman/overlap_peak_tables/blob/main/docs/Walkthrough_examples.ipynb)
