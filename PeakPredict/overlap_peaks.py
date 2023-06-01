@@ -2,8 +2,8 @@
 import pandas as pd
 import bioframe
 import numpy as np
-from overlap_peak_tables.lib.io import load_bed
-from overlap_peak_tables.overlap_predict import *
+from PeakPredict.lib.io import load_bed
+from PeakPredict.PeakPredict_functions import *
 import logging
 import warnings
 import argparse
@@ -18,7 +18,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 logging.basicConfig(format="%(message)s", level="INFO")
 
 
-def parse_args_overlap_count_tables():
+def parse_args_overlap_peaks():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -153,7 +153,7 @@ def parse_args_overlap_count_tables():
 
 
 def main():
-    parser = parse_args_overlap_count_tables()
+    parser = parse_args_overlap_peaks()
     args = parser.parse_args()
 
     logging.debug(args)

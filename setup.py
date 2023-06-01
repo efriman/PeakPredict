@@ -6,6 +6,17 @@ import io
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
+    
+import re
+
+VERSIONFILE = "PeakPredict/_version.py"
+verstrline = open(VERSIONFILE, "rt").read()
+VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+mo = re.search(VSRE, verstrline, re.M)
+if mo:
+    verstr = mo.group(1)
+else:
+    raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
 
 
 def _read(*parts, **kwargs):
@@ -30,23 +41,24 @@ setup_requires = []
 INSTALL_REQUIRES = get_requirements("requirements.txt")
 
 setup(
-    name="overlap_peak_tables",
-    packages=["overlap_peak_tables", "overlap_peak_tables.lib"],
+    name="PeakPredict",
+    version=verstr,
+    packages=["PeakPredict", "PeakPredict.lib"],
     entry_points={
         "console_scripts": [
-            "overlap_peak_tables = overlap_peak_tables.overlap_peak_tables_CLI:main",
-            "predict_features = overlap_peak_tables.predict_features_CLI:main",
+            "overlap_peaks = PeakPredict.overlap_peaks:main",
+            "predict_features = PeakPredict.predict_features:main",
         ]
     },
     setup_requires=setup_requires,
     install_requires=INSTALL_REQUIRES,
     python_requires=">=3.8",
-    description="Simple script to count the number of overlapping or closest features between one and multiple bed files",
+    description="Peak overlaps and feature predictions",
     long_description=long_description,
     long_description_content_type="text/markdown",
     project_urls={
-        "Source": "https://github.com/efriman/overlap_peak_tables",
-        "Issues": "https://github.com/efriman/overlap_peak_tables/issues",
+        "Source": "https://github.com/efriman/PeakPredict",
+        "Issues": "https://github.com/efriman/PeakPredict/issues",
     },
     author="Elias Friman",
     author_email="elias.friman@gmail.com",

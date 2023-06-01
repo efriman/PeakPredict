@@ -2,7 +2,7 @@
 import pandas as pd
 import bioframe
 import numpy as np
-from overlap_peak_tables.overlap_predict import predict_features
+from PeakPredict.PeakPredict_functions import predict_features
 import logging
 import warnings
 import argparse
