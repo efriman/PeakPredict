@@ -60,30 +60,14 @@ def parse_args_predict_features():
         type=str,
         required=False,
         default=False,
-        help="""Specify if predict_column contains categorical or numerical values. By default, auto detects""",
+        help="""Specify if predict_column contains 'categorical' or 'numerical' values. By default, auto detects""",
     )
     parser.add_argument(
         "--model",
         type=str,
         required=False,
         default="LogisticRegression",
-        help="""The name of the model used for prediction. Available models are:
-        LogisticRegression
-        SVC
-        GaussianNB
-        MultinomialNB
-        SGDClassifier
-        KNeighborsClassifier
-        DecisionTreeClassifier
-        RandomForestClassifier
-        GradientBoostingClassifier
-        LinearRegression
-        SGDRegressor
-        KernelRidge
-        ElasticNet
-        BayesianRidge
-        GradientBoostingRegressor
-        SVR
+        help="""The name of the model used for prediction. All models from sklearn are available
         """,
     )
     parser.add_argument(
@@ -164,20 +148,22 @@ def main():
     logging.debug(
         f"Saved predictions of test data as {args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv"
     )
-
-    ConfusionMatrixDisplay.from_predictions(
-        predictions[args.predict_column], predictions[f"{args.predict_column}_pred"]
-    )
-    plt.tight_layout()
-    plt.xticks(rotation=90)
-    plt.savefig(
-        f"{args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png",
-        dpi=300,
-        bbox_inches="tight",
-    )
-    logging.debug(
-        f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
-    )
+    try:
+        ConfusionMatrixDisplay.from_predictions(
+            predictions[args.predict_column], predictions[f"{args.predict_column}_pred"]
+        )
+        plt.tight_layout()
+        plt.xticks(rotation=90)
+        plt.savefig(
+            f"{args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        logging.debug(
+            f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
+        )
+    except ValueError:
+        warnings.warn("Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777")
 
     feature_importance.to_csv(
         f"{args.outdir}/{args.outname}_{args.model}_feature_importance.tsv",

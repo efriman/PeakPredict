@@ -162,18 +162,18 @@ def main():
         schema = "bedpe"
         dtypes = {
             "chrom1": str,
-            "start1": np.int64,
-            "end1": np.int64,
+            "start1": np.uint64,
+            "end1": np.uint64,
             "chrom2": str,
-            "start2": np.int64,
-            "end2": np.int64,
+            "start2": np.uint64,
+            "end2": np.uint64,
         }
     else:
         schema = "bed3"
         dtypes = {
             "chrom": str,
-            "start": np.int64,
-            "end": np.int64,
+            "start": np.uint64,
+            "end": np.uint64,
         }
 
     base_peaks = load_bed(args.base_bed, schema=schema, dtypes=dtypes)
@@ -190,7 +190,7 @@ def main():
         for overlap_feature in args.overlap_features:
             if overlap_feature in overlap_table.columns:
                 raise ValueError(
-                    f"base peaks already contains a column with name {overlap_bed_file}"
+                    f"base peaks already contains a column with name {overlap_feature}"
                 )
             else:
                 overlap_peaks = load_bed(
@@ -198,8 +198,8 @@ def main():
                     schema="bed3",
                     dtypes={
                         "chrom": str,
-                        "start": np.int64,
-                        "end": np.int64,
+                        "start": np.uint64,
+                        "end": np.uint64,
                     },
                 )
                 if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
@@ -227,9 +227,10 @@ def main():
     else:
         logging.info(f"Counting overlaps")
         for overlap_feature in args.overlap_features:
+            print(overlap_feature)
             if overlap_feature in overlap_table.columns:
                 raise ValueError(
-                    f"base peaks already contains a column with name {overlap_bed_file}"
+                    f"base peaks already contains a column with name {overlap_feature}"
                 )
             else:
                 overlap_peaks = load_bed(
@@ -237,8 +238,8 @@ def main():
                     schema="bed3",
                     dtypes={
                         "chrom": str,
-                        "start": np.int64,
-                        "end": np.int64,
+                        "start": np.uint64,
+                        "end": np.uint64,
                     },
                 )
                 if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
@@ -259,6 +260,7 @@ def main():
                         overlap_feature,
                         boolean_output=args.boolean_output,
                     )
+                    #del overlap_peaks
 
     overlap_table.to_csv(
         f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True
@@ -319,21 +321,23 @@ def main():
         logging.debug(
             f"Saved predictions of test data as {args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv"
         )
-
-        ConfusionMatrixDisplay.from_predictions(
-            predictions[args.predict_column], predictions[f"{args.predict_column}_pred"]
-        )
-        plt.tight_layout()
-        plt.xticks(rotation=90)
-        plt.savefig(
-            f"{args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png",
-            dpi=300,
-            bbox_inches="tight",
-        )
-        logging.debug(
-            f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
-        )
-
+        try:
+            ConfusionMatrixDisplay.from_predictions(
+                predictions[args.predict_column], predictions[f"{args.predict_column}_pred"]
+            )
+            plt.tight_layout()
+            plt.xticks(rotation=90)
+            plt.savefig(
+                f"{args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
+            logging.debug(
+                f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
+            )
+        except ValueError:
+            warnings.warn("Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777")
+            
         feature_importance.to_csv(
             f"{args.outdir}/{args.outname}_{args.model}_feature_importance.tsv",
             sep="\t",

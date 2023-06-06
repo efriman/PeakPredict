@@ -45,7 +45,7 @@ def count_overlaps(
     overlap_counts = overlap.groupby("coords").size().reset_index()
     overlap_counts.columns = ["coords", overlap_column_name]
     overlap = pd.merge(overlap_table, overlap_counts, on="coords", how="left").fillna(0)
-    overlap[overlap_column_name] = overlap[overlap_column_name].astype(int)
+    overlap[overlap_column_name] = overlap[overlap_column_name].astype(np.uint16)
     overlap = overlap.drop(columns="coords")
     if boolean_output:
         overlap[overlap_column_name] = np.where(
@@ -75,7 +75,7 @@ def count_closest(
     count_closest = closest.groupby("coords").size().reset_index()
     count_closest.columns = ["coords", overlap_column_name]
     closest = pd.merge(overlap_table, count_closest, on="coords", how="left").fillna(0)
-    closest[overlap_column_name] = closest[overlap_column_name].astype(int)
+    closest[overlap_column_name] = closest[overlap_column_name].astype(np.uint16)
     closest = closest.drop(columns="coords")
     return closest
 
@@ -105,7 +105,7 @@ def count_overlaps_bedpe(
         )
         overlap[f"{overlap_column_name}{side}"] = overlap[
             f"{overlap_column_name}{side}"
-        ].astype(int)
+        ].astype(np.uint16)
         overlap = overlap.drop(columns="coords")
         if boolean_output:
             overlap[f"{overlap_column_name}{side}"] = np.where(
@@ -151,7 +151,7 @@ def count_closest_bedpe(
         closest = pd.merge(side_peaks, count_closest, on="coords", how="left").fillna(0)
         closest[f"{overlap_column_name}{side}"] = closest[
             f"{overlap_column_name}{side}"
-        ].astype(int)
+        ].astype(np.uint16)
         closest = closest.drop(columns="coords")
         closest.columns = [
             f"chrom{side}",
@@ -260,8 +260,12 @@ def predict_features(
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
-    mcc = matthews_corrcoef(y_test, y_pred)
-    logging.info(f"Matthew's correlation coefficient: {mcc}")
+    try:
+        mcc = matthews_corrcoef(y_test, y_pred)
+        logging.info(f"Matthew's correlation coefficient: {mcc}")
+    except ValueError:
+        warnings.warn("Cannot compute Matthew's correlation coefficient for this type of classification/regression, see https://stackoverflow.com/a/54458777")
+    
 
     predictions = X_test.copy()
     predictions[f"{predict_column}_pred"] = y_pred
