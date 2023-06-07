@@ -9,6 +9,7 @@ import argparse
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
+import json
 
 warnings.filterwarnings(action="ignore", message=".*tight_layout.*")
 warnings.filterwarnings(action="ignore", message=".*Tight layout.*")
@@ -90,6 +91,13 @@ def parse_args_predict_features():
         required=False,
         help="""Relative size of plots. Adjust if they don't look right (too many/few features)""",
     )
+    parser.add_argument(
+        "--model_args",
+        "--model-args",
+        type=json.loads,
+        help="""Additional arguments to use in the prediction model. Supply as dictionary,
+        e.g. '{"n_estimators": 200, "criterion": "entropy"} """,
+    )
 
     return parser
 
@@ -123,6 +131,7 @@ def main():
         test_size=args.test_size,
         random_state=random_state,
         cat_or_num=args.column_type,
+        **args.model_args,
     )
 
     g = sns.clustermap(

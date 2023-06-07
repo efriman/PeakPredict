@@ -216,6 +216,7 @@ def predict_features(
     test_size=0.3,
     random_state=None,
     cat_or_num=False,
+    **model_kwargs,
 ):
     if predict_column not in input_table:
         raise ValueError(f"column {predict_column} doesn't exist in the input table")
@@ -253,7 +254,8 @@ def predict_features(
     for module in dir(sklearn):
         if model in dir(eval(f"sklearn.{module}")):
             logging.info(f"Predicting {predict_column} using sklearn.{module}.{model}")
-            model = eval(f"sklearn.{module}.{model}")()
+            logging.info(f"Using model parameters: {model_kwargs}")
+            model = eval(f"sklearn.{module}.{model}")(**model_kwargs)
             break
     if isinstance(model, str):
         raise ValueError(f"{model} doesn't exist in sklearn")

@@ -15,7 +15,7 @@ Command line interface to count the number of overlapping or closest features be
 
 `overlap_peaks` takes a base BED (or BEDPE, specify `--bedpe`) which you want to overlap multiple other bed files with (`--overlap_features`). Files need to either be without headers or contain at least the headers `chrom`, `start`, and `end`. By default, it quantifies the number of peaks overlapping each peak in the base_bed (0/1/2 etc). If you prefer you can set `--boolean_output` to get True/False overlaps. You can also run it with `--closest` to get the number of peaks in vicinity of the peak (parameters for this are `--k`, `--mindist`, and `--maxdist`).
 
-To run predictions based on the peak overlaps, set `--predict_column` to the column in the base_bed you want to predict. Other options for the prediction are `--column_type`, `--model`, `--test_size`, `--seed`, and `--plot_size`. Predictions can also be done on any input table using
+To run predictions based on the peak overlaps, set `--predict_column` to the column in the base_bed you want to predict. Other options for the prediction are `--column_type`, `--model`, `--test_size`, `--seed`, `--plot_size`, and `--model_args`. Predictions can also be done on any input table using
 
 `predict_features input_table.tsv --predict_column predict_this --predictor_columns [...] --outname outfile [OPTIONS]`
 

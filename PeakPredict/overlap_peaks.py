@@ -10,6 +10,7 @@ import argparse
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
+import json
 
 warnings.filterwarnings(action="ignore", message=".*tight_layout.*")
 warnings.filterwarnings(action="ignore", message=".*Tight layout.*")
@@ -109,23 +110,7 @@ def parse_args_overlap_peaks():
         type=str,
         required=False,
         default="LogisticRegression",
-        help="""The name of the model used for prediction. Available models are:
-        LogisticRegression
-        SVC
-        GaussianNB
-        MultinomialNB
-        SGDClassifier
-        KNeighborsClassifier
-        DecisionTreeClassifier
-        RandomForestClassifier
-        GradientBoostingClassifier
-        LinearRegression
-        SGDRegressor
-        KernelRidge
-        ElasticNet
-        BayesianRidge
-        GradientBoostingRegressor
-        SVR
+        help="""The name of the model used for prediction. All models from sklearn are available
         """,
     )
     parser.add_argument(
@@ -147,6 +132,13 @@ def parse_args_overlap_peaks():
         default=1,
         required=False,
         help="""Relative size of plots. Adjust if they don't look right (too many/few features)""",
+    )
+    parser.add_argument(
+        "--model_args",
+        "--model-args",
+        type=json.loads,
+        help="""Additional arguments to use in the prediction model. Supply as dictionary,
+        e.g. '{"n_estimators": 200, "criterion": "entropy"} """,
     )
 
     return parser
@@ -296,6 +288,7 @@ def main():
             test_size=args.test_size,
             random_state=random_state,
             cat_or_num=args.column_type,
+            **args.model_args,
         )
 
         g = sns.clustermap(
