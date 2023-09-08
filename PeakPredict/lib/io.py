@@ -7,9 +7,11 @@ import numpy as np
 import logging
 import gzip
 
+
 def is_gz_file(filepath):
     with open(filepath, "rb") as test_f:
         return test_f.read(2) == b"\x1f\x8b"
+
 
 def sniff_for_header(file, sep="\t", comment="#"):
     """
@@ -39,24 +41,32 @@ def sniff_for_header(file, sep="\t", comment="#"):
         names = sample_lines[0].strip().split(sep)
     else:
         names = None
-    
+
     ncols = len(sample_lines[0].strip().split(sep))
 
     return buf, names, ncols
 
-def load_bed(bed_file, 
-             schema="bed3", 
-             dtypes={"chrom": str, "start": np.int64, "end": np.int64,},
-             ):
+
+def load_bed(
+    bed_file,
+    schema="bed3",
+    dtypes={
+        "chrom": str,
+        "start": np.int64,
+        "end": np.int64,
+    },
+):
     buf, names, ncols = sniff_for_header(bed_file)
     if names is not None:
-        if set(['chrom', 'start', 'end']).issubset(set(names)):
+        if set(["chrom", "start", "end"]).issubset(set(names)):
             features = pd.read_table(buf, dtype=dtypes)
         else:
-            raise ValueError("bed file needs to have a header containing chrom, start, and end or no header")
+            raise ValueError(
+                "bed file needs to have a header containing chrom, start, and end or no header"
+            )
     else:
-        features = bioframe.read_table(buf, schema=schema, index_col=False, dtype=dtypes)
+        features = bioframe.read_table(
+            buf, schema=schema, index_col=False, dtype=dtypes
+        )
 
     return features
-    
-

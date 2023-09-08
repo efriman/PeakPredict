@@ -123,6 +123,19 @@ def parse_args_overlap_peaks():
         help="""The fraction of dataset to be split for testing (and the rest for training)""",
     )
     parser.add_argument(
+        "--balance",
+        action="store_true",
+        default=False,
+        required=False,
+        help="""Specify if you want to downsample the different categories to equal the smallest""",
+    )
+    parser.add_argument(
+        "--maximum_per_category",
+        type=int,
+        default=0,
+        help="""Specify >0 if you want to downsample the different categories to this number (or smaller)""",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         required=False,
@@ -263,7 +276,7 @@ def main():
                         overlap_feature,
                         boolean_output=args.boolean_output,
                     )
-                    #del overlap_peaks
+                    # del overlap_peaks
 
     overlap_table.to_csv(
         f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True
@@ -271,6 +284,29 @@ def main():
     logging.info(f"Saved overlap table as {args.outdir}/{args.outname}.tsv")
 
     if args.predict_column is not None:
+        if args.balance:
+            if args.maximum_per_category > 0:
+                logging.info("balance supersedes maximum_per_category")
+            smallest = min(
+                overlap_table.groupby(args.predict_column).size().reset_index()[0]
+            )
+            logging.info(f"Downsampling to {smallest} regions per group")
+            input_table = (
+                overlap_table.groupby(args.predict_column)
+                .sample(smallest)
+                .reset_index(drop=True)
+            )
+        elif args.maximum_per_category > 0:
+            logging.info(
+                f"Downsampling to {args.maximum_per_category} regions per group"
+            )
+            input_table = (
+                overlap_table.groupby(args.predict_column)
+                .sample(args.maximum_per_category)
+                .reset_index(drop=True)
+            )
+        else:
+            input_table = overlap_table
 
         predictor_columns = [
             col
@@ -285,14 +321,14 @@ def main():
                 "--column_type must be either 'categorical' or 'numerical', auto detecting instead"
             )
             args.column_type = False
-    
+
         if args.seed:
             random_state = args.seed
         else:
             random_state = None
 
         corr_matrix, predictions, feature_importance, model = predict_features(
-            overlap_table,
+            input_table,
             predict_column=args.predict_column,
             predictor_columns=predictor_columns,
             model=args.model,
@@ -327,7 +363,8 @@ def main():
         )
         try:
             ConfusionMatrixDisplay.from_predictions(
-                predictions[args.predict_column], predictions[f"{args.predict_column}_pred"]
+                predictions[args.predict_column],
+                predictions[f"{args.predict_column}_pred"],
             )
             plt.tight_layout()
             plt.xticks(rotation=90)
@@ -340,8 +377,10 @@ def main():
                 f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
             )
         except ValueError:
-            warnings.warn("Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777")
-            
+            warnings.warn(
+                "Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777"
+            )
+
         feature_importance.to_csv(
             f"{args.outdir}/{args.outname}_feature_importance_{args.model}.tsv",
             sep="\t",
@@ -364,14 +403,24 @@ def main():
         logging.info(
             f"Saved feature importance as {args.outdir}/{args.outname}_feature_importance_{args.model}.tsv and {args.outdir}/{args.outname}_feature_importance_{args.model}.png"
         )
-        
+
         if args.shap:
-            plot_size = None if args.plot_size == 1 else (args.plot_size, args.plot_size)
-            shap_values = shap.Explainer(model).shap_values(predictions[predictor_columns])
+            logging.info(f"Calculating SHAP values (can be slow for big datasets)")
+            plot_size = (
+                None if args.plot_size == 1 else (args.plot_size, args.plot_size)
+            )
+            shap_values = shap.Explainer(model).shap_values(
+                predictions[predictor_columns]
+            )
             plt.figure()
-            shap.summary_plot(shap_values, predictions[predictor_columns], 
-                              class_names=model.classes_, show=False, 
-                              plot_type="bar", plot_size=plot_size)
+            shap.summary_plot(
+                shap_values,
+                predictions[predictor_columns],
+                class_names=model.classes_,
+                show=False,
+                plot_type="bar",
+                plot_size=plot_size,
+            )
             plt.legend(loc=(1.04, 0))
             plt.savefig(
                 f"{args.outdir}/{args.outname}_SHAP_{args.model}.png",
@@ -384,8 +433,12 @@ def main():
             for i in range(len(shap_values)):
                 name = model.classes_[i]
                 plt.figure()
-                shap.summary_plot(shap_values[i], predictions[predictor_columns], show=False,
-                                  plot_size=plot_size)
+                shap.summary_plot(
+                    shap_values[i],
+                    predictions[predictor_columns],
+                    show=False,
+                    plot_size=plot_size,
+                )
                 plt.title(label=name)
                 plt.savefig(
                     f"{args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png",
@@ -393,8 +446,9 @@ def main():
                     bbox_inches="tight",
                 )
                 logging.info(
-                f"Saved SHAP values as {args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png"
-            )
+                    f"Saved SHAP values as {args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png"
+                )
+
 
 if __name__ == "__main__":
     main()

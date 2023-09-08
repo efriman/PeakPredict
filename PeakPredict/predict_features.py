@@ -41,8 +41,9 @@ def parse_args_predict_features():
         "--predictor-columns",
         type=str,
         nargs="+",
-        required=True,
-        help="""The name of the columns to use for the prediction""",
+        required=False,
+        help="""The name of the columns to use for the prediction. If not set will use all columns 
+        except chrom, start, end, and the input of --predict_column""",
     )
     parser.add_argument(
         "--outdir",
@@ -79,6 +80,19 @@ def parse_args_predict_features():
         required=False,
         default=0.3,
         help="""The fraction of dataset to be split for testing (and the rest for training)""",
+    )
+    parser.add_argument(
+        "--balance",
+        action="store_true",
+        default=False,
+        required=False,
+        help="""Specify if you want to downsample the different categories to equal the smallest""",
+    )
+    parser.add_argument(
+        "--maximum_per_category",
+        type=int,
+        default=0,
+        help="""Specify >0 if you want to downsample the different categories to this number (or smaller)""",
     )
     parser.add_argument(
         "--seed",
@@ -118,9 +132,16 @@ def main():
 
     logging.debug(args)
 
-    overlap_table = pd.read_table(args.input_table)
+    input_table = pd.read_table(args.input_table)
 
-    predictor_columns = args.predictor_columns
+    if args.predictor_columns:
+        predictor_columns = args.predictor_columns
+    else:
+        predictor_columns = [
+            col
+            for col in input_table.columns
+            if col not in ["chrom", "start", "end", args.predict_column]
+        ]
 
     if args.column_type and not set([args.column_type]).issubset(
         set(["categorical", "numerical"])
@@ -135,8 +156,30 @@ def main():
     else:
         random_state = None
 
+        if args.balance:
+            if args.maximum_per_category > 0:
+                logging.info("balance supersedes maximum_per_category")
+            smallest = min(
+                input_table.groupby(args.predict_column).size().reset_index()[0]
+            )
+            logging.info(f"Downsampling to {smallest} regions per group")
+            input_table = (
+                input_table.groupby(args.predict_column)
+                .sample(smallest, random_state=random_state)
+                .reset_index(drop=True)
+            )
+        elif args.maximum_per_category > 0:
+            logging.info(
+                f"Downsampling to {args.maximum_per_category} regions per group"
+            )
+            input_table = (
+                input_table.groupby(args.predict_column)
+                .sample(args.maximum_per_category, random_state=random_state)
+                .reset_index(drop=True)
+            )
+
     corr_matrix, predictions, feature_importance, model = predict_features(
-        overlap_table,
+        input_table,
         predict_column=args.predict_column,
         predictor_columns=predictor_columns,
         model=args.model,
@@ -184,8 +227,10 @@ def main():
             f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
         )
     except ValueError:
-        warnings.warn("Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777")
-        
+        warnings.warn(
+            "Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777"
+        )
+
     feature_importance.to_csv(
         f"{args.outdir}/{args.outname}_feature_importance_{args.model}.tsv",
         sep="\t",
@@ -208,14 +253,20 @@ def main():
     logging.info(
         f"Saved feature importance as {args.outdir}/{args.outname}_feature_importance_{args.model}.tsv and {args.outdir}/{args.outname}_feature_importance_{args.model}.png"
     )
-    
+
     if args.shap:
+        logging.info(f"Calculating SHAP values (can be slow for big datasets)")
         plot_size = None if args.plot_size == 1 else (args.plot_size, args.plot_size)
         shap_values = shap.Explainer(model).shap_values(predictions[predictor_columns])
         plt.figure()
-        shap.summary_plot(shap_values, predictions[predictor_columns], 
-                          class_names=model.classes_, show=False, 
-                          plot_type="bar", plot_size=plot_size)
+        shap.summary_plot(
+            shap_values,
+            predictions[predictor_columns],
+            class_names=model.classes_,
+            show=False,
+            plot_type="bar",
+            plot_size=plot_size,
+        )
         plt.legend(loc=(1.04, 0))
         plt.savefig(
             f"{args.outdir}/{args.outname}_SHAP_{args.model}.png",
@@ -228,8 +279,12 @@ def main():
         for i in range(len(shap_values)):
             name = model.classes_[i]
             plt.figure()
-            shap.summary_plot(shap_values[i], predictions[predictor_columns], show=False,
-                              plot_size=plot_size)
+            shap.summary_plot(
+                shap_values[i],
+                predictions[predictor_columns],
+                show=False,
+                plot_size=plot_size,
+            )
             plt.title(label=name)
             plt.savefig(
                 f"{args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png",
@@ -237,8 +292,9 @@ def main():
                 bbox_inches="tight",
             )
             logging.info(
-            f"Saved SHAP values as {args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png"
-        )
+                f"Saved SHAP values as {args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png"
+            )
+
 
 if __name__ == "__main__":
     main()

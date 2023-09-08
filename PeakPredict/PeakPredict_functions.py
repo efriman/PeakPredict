@@ -266,8 +266,9 @@ def predict_features(
         mcc = matthews_corrcoef(y_test, y_pred)
         logging.info(f"Matthew's correlation coefficient: {mcc}")
     except ValueError:
-        warnings.warn("Cannot compute Matthew's correlation coefficient for this type of classification/regression, see https://stackoverflow.com/a/54458777")
-    
+        warnings.warn(
+            "Cannot compute Matthew's correlation coefficient for this type of classification/regression, see https://stackoverflow.com/a/54458777"
+        )
 
     predictions = X_test.copy()
     predictions[f"{predict_column}_pred"] = y_pred
