@@ -281,4 +281,4 @@ def predict_features(
 
     feature_importance = extract_feature_importance(model, X_test, y_test)
 
-    return corr_matrix, predictions, feature_importance
+    return corr_matrix, predictions, feature_importance, model

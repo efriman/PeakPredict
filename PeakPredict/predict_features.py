@@ -10,10 +10,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 import json
+import shap
 
 warnings.filterwarnings(action="ignore", message=".*tight_layout.*")
 warnings.filterwarnings(action="ignore", message=".*Tight layout.*")
 warnings.filterwarnings(action="ignore", message=r".*index_col*")
+warnings.filterwarnings(action="ignore", message=r".*No data for colormapping*")
 warnings.simplefilter(action="ignore", category=FutureWarning)
 logging.basicConfig(format="%(message)s", level="INFO")
 
@@ -85,18 +87,26 @@ def parse_args_predict_features():
         help="""Seed used for random splitting data for prediction. Set for reproducibility""",
     )
     parser.add_argument(
+        "--model_args",
+        "--model-args",
+        type=json.loads,
+        default={},
+        help="""Additional arguments to use in the prediction model. Supply as dictionary,
+        e.g. '{"n_estimators": 200, "criterion": "entropy"} """,
+    )
+    parser.add_argument(
+        "--shap",
+        action="store_true",
+        default=False,
+        required=False,
+        help="""Specify if you want to generate SHAP value plots""",
+    )
+    parser.add_argument(
         "--plot_size",
         type=int,
         default=1,
         required=False,
         help="""Relative size of plots. Adjust if they don't look right (too many/few features)""",
-    )
-    parser.add_argument(
-        "--model_args",
-        "--model-args",
-        type=json.loads,
-        help="""Additional arguments to use in the prediction model. Supply as dictionary,
-        e.g. '{"n_estimators": 200, "criterion": "entropy"} """,
     )
 
     return parser
@@ -108,13 +118,15 @@ def main():
 
     logging.debug(args)
 
-    input_table = pd.read_table(args.input_table)
+    overlap_table = pd.read_table(args.input_table)
+
+    predictor_columns = args.predictor_columns
 
     if args.column_type and not set([args.column_type]).issubset(
         set(["categorical", "numerical"])
     ):
         warnings.warn(
-            "--column type must be either 'categorical' or 'numerical', auto detecting instead"
+            "--column_type must be either 'categorical' or 'numerical', auto detecting instead"
         )
         args.column_type = False
 
@@ -123,10 +135,10 @@ def main():
     else:
         random_state = None
 
-    corr_matrix, predictions, feature_importance = predict_features(
-        input_table,
+    corr_matrix, predictions, feature_importance, model = predict_features(
+        overlap_table,
         predict_column=args.predict_column,
-        predictor_columns=args.predictor_columns,
+        predictor_columns=predictor_columns,
         model=args.model,
         test_size=args.test_size,
         random_state=random_state,
@@ -144,7 +156,7 @@ def main():
         figsize=(args.plot_size, args.plot_size),
     )
     g.savefig(f"{args.outdir}/{args.outname}_corr_features.png", dpi=100)
-    logging.debug(
+    logging.info(
         f"Saved predictor correlations as {args.outdir}/{args.outname}_corr_features.png"
     )
 
@@ -154,7 +166,7 @@ def main():
         index=False,
         header=True,
     )
-    logging.debug(
+    logging.info(
         f"Saved predictions of test data as {args.outdir}/{args.outname}_predict_{args.predict_column}_{args.model}.tsv"
     )
     try:
@@ -168,14 +180,14 @@ def main():
             dpi=300,
             bbox_inches="tight",
         )
-        logging.debug(
+        logging.info(
             f"Saved confusion matrix as {args.outdir}/{args.outname}_confusion_matrix_{args.predict_column}_{args.model}.png"
         )
     except ValueError:
         warnings.warn("Cannot generate Confusion Matrix for this type of classification/regression, see https://stackoverflow.com/a/54458777")
-
+        
     feature_importance.to_csv(
-        f"{args.outdir}/{args.outname}_{args.model}_feature_importance.tsv",
+        f"{args.outdir}/{args.outname}_feature_importance_{args.model}.tsv",
         sep="\t",
         index=False,
     )
@@ -189,14 +201,44 @@ def main():
     )
     plt.xticks(rotation=45, ha="right")
     plt.savefig(
-        f"{args.outdir}/{args.outname}_{args.model}_feature_importance.png",
+        f"{args.outdir}/{args.outname}_feature_importance_{args.model}.png",
         dpi=300,
         bbox_inches="tight",
     )
-    logging.debug(
-        f"Saved feature importance as {args.outdir}/{args.outname}_{args.model}_feature_importance.tsv and {args.outdir}/{args.outname}_{args.model}_feature_importance.png"
+    logging.info(
+        f"Saved feature importance as {args.outdir}/{args.outname}_feature_importance_{args.model}.tsv and {args.outdir}/{args.outname}_feature_importance_{args.model}.png"
     )
-
+    
+    if args.shap:
+        plot_size = None if args.plot_size == 1 else (args.plot_size, args.plot_size)
+        shap_values = shap.Explainer(model).shap_values(predictions[predictor_columns])
+        plt.figure()
+        shap.summary_plot(shap_values, predictions[predictor_columns], 
+                          class_names=model.classes_, show=False, 
+                          plot_type="bar", plot_size=plot_size)
+        plt.legend(loc=(1.04, 0))
+        plt.savefig(
+            f"{args.outdir}/{args.outname}_SHAP_{args.model}.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        logging.info(
+            f"Saved SHAP values as {args.outdir}/{args.outname}_SHAP_{args.model}.png"
+        )
+        for i in range(len(shap_values)):
+            name = model.classes_[i]
+            plt.figure()
+            shap.summary_plot(shap_values[i], predictions[predictor_columns], show=False,
+                              plot_size=plot_size)
+            plt.title(label=name)
+            plt.savefig(
+                f"{args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
+            logging.info(
+            f"Saved SHAP values as {args.outdir}/{args.outname}_SHAP_{name}_{args.model}.png"
+        )
 
 if __name__ == "__main__":
     main()
