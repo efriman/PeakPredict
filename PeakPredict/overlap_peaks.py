@@ -93,6 +93,13 @@ def parse_args_overlap_peaks():
         help="""Maximum distance for the number of closest peaks""",
     )
     parser.add_argument(
+        "--column_names",
+        type=str,
+        nargs="+",
+        required=False,
+        help="""List of names to give columns, has to be same length as overlap_features""",
+    )
+    parser.add_argument(
         "--predict_column",
         "--predict-column",
         type=str,
@@ -192,6 +199,8 @@ def main():
         }
 
     base_peaks = load_bed(args.base_bed, schema=schema, dtypes=dtypes)
+    if base_peaks.empty:
+        raise ValueError("Empty input")
 
     if "coords" in base_peaks.columns:
         warnings.warn("column named coords will be removed")
@@ -282,7 +291,14 @@ def main():
                         overlap_feature,
                         boolean_output=args.boolean_output,
                     )
-
+                    
+    if args.column_names:
+        if len(args.overlap_features) != len(args.column_names):
+            logging.info("--column_names must be same number of entries as --overlap_features, ignoring")
+        else:
+            namedict = dict(zip(args.overlap_features, args.column_names))
+            overlap_table = overlap_table.rename(columns=namedict)
+            
     overlap_table.to_csv(
         f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True
     )
@@ -342,17 +358,20 @@ def main():
             cat_or_num=args.column_type,
             **args.model_args,
         )
-
+        
+        nanmask = np.isnan(corr_matrix)
+        
         g = sns.clustermap(
-            corr_matrix,
+            corr_matrix.fillna(0),
             cmap="coolwarm",
             vmin=-1,
             vmax=1,
             yticklabels=True,
             xticklabels=True,
+            mask=nanmask,
             figsize=(args.plot_size, args.plot_size),
         )
-        g.savefig(f"{args.outdir}/{args.outname}_corr_features.png", dpi=100)
+        g.savefig(f"{args.outdir}/{args.outname}_corr_features.png", dpi=300)
         logging.info(
             f"Saved predictor correlations as {args.outdir}/{args.outname}_corr_features.png"
         )

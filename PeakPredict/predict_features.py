@@ -133,6 +133,9 @@ def main():
     logging.debug(args)
 
     input_table = pd.read_table(args.input_table)
+    
+    if input_table.empty:
+        raise ValueError("Empty input")
 
     if args.predictor_columns:
         predictor_columns = args.predictor_columns
@@ -189,16 +192,19 @@ def main():
         **args.model_args,
     )
 
+    nanmask = np.isnan(corr_matrix)
+    
     g = sns.clustermap(
-        corr_matrix,
+        corr_matrix.fillna(0),
         cmap="coolwarm",
         vmin=-1,
         vmax=1,
         yticklabels=True,
         xticklabels=True,
+        mask=nanmask,
         figsize=(args.plot_size, args.plot_size),
     )
-    g.savefig(f"{args.outdir}/{args.outname}_corr_features.png", dpi=100)
+    g.savefig(f"{args.outdir}/{args.outname}_corr_features.png", dpi=300)
     logging.info(
         f"Saved predictor correlations as {args.outdir}/{args.outname}_corr_features.png"
     )
