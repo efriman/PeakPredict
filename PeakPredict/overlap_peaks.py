@@ -218,6 +218,9 @@ def main():
                         "end": np.int32,
                     },
                 )
+                if overlap_peaks.empty:
+                    logging.info(f"Something wrong with the format of {overlap_feature}, skipping")
+                    continue
                 if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
                     warnings.warn(
                         "The peak files have inconsistent naming with regards to using 'chr'"
@@ -258,6 +261,9 @@ def main():
                         "end": np.int32,
                     },
                 )
+                if overlap_peaks.empty:
+                    logging.info(f"Something wrong with the format of {overlap_feature}, skipping")
+                    continue
                 if check_chr_naming(overlap_table, overlap_peaks, bedpe=args.bedpe):
                     warnings.warn(
                         "The peak files have inconsistent naming with regards to using 'chr'"
@@ -276,7 +282,6 @@ def main():
                         overlap_feature,
                         boolean_output=args.boolean_output,
                     )
-                    # del overlap_peaks
 
     overlap_table.to_csv(
         f"{args.outdir}/{args.outname}.tsv", sep="\t", index=False, header=True

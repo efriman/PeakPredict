@@ -36,7 +36,11 @@ def sniff_for_header(file, sep="\t", comment="#"):
         sample_lines.append(buf.readline())
     buf.seek(0)
 
-    has_header = csv.Sniffer().has_header("\n".join(sample_lines))
+    if len(sample_lines[0].strip().split(sep)) > 1:
+        has_header = csv.Sniffer().has_header("\n".join(sample_lines))
+    else:
+        has_header = False
+
     if has_header:
         names = sample_lines[0].strip().split(sep)
     else:
