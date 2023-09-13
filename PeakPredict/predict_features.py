@@ -110,10 +110,9 @@ def parse_args_predict_features():
     )
     parser.add_argument(
         "--shap",
-        action="store_true",
-        default=False,
+        nargs="*",
         required=False,
-        help="""Specify if you want to generate SHAP value plots""",
+        help="""Specify if you want to generate SHAP value plots. Use '--shap approximate' for faster calculation""",
     )
     parser.add_argument(
         "--plot_size",
@@ -159,27 +158,27 @@ def main():
     else:
         random_state = None
 
-        if args.balance:
-            if args.maximum_per_category > 0:
-                logging.info("balance supersedes maximum_per_category")
-            smallest = min(
-                input_table.groupby(args.predict_column).size().reset_index()[0]
-            )
-            logging.info(f"Downsampling to {smallest} regions per group")
-            input_table = (
-                input_table.groupby(args.predict_column)
-                .sample(smallest, random_state=random_state)
-                .reset_index(drop=True)
-            )
-        elif args.maximum_per_category > 0:
-            logging.info(
-                f"Downsampling to {args.maximum_per_category} regions per group"
-            )
-            input_table = (
-                input_table.groupby(args.predict_column)
-                .sample(args.maximum_per_category, random_state=random_state)
-                .reset_index(drop=True)
-            )
+    if args.balance:
+        if args.maximum_per_category > 0:
+            logging.info("--balance supersedes --maximum_per_category")
+        smallest = min(
+            input_table.groupby(args.predict_column).size().reset_index()[0]
+        )
+        logging.info(f"Downsampling to {smallest} regions per group")
+        input_table = (
+            input_table.groupby(args.predict_column)
+            .sample(smallest, random_state=random_state)
+            .reset_index(drop=True)
+        )
+    elif args.maximum_per_category > 0:
+        logging.info(
+            f"Downsampling to {args.maximum_per_category} regions per group"
+        )
+        input_table = (
+            input_table.groupby(args.predict_column)
+            .sample(args.maximum_per_category, random_state=random_state)
+            .reset_index(drop=True)
+        )
 
     corr_matrix, predictions, feature_importance, model = predict_features(
         input_table,
@@ -260,10 +259,20 @@ def main():
         f"Saved feature importance as {args.outdir}/{args.outname}_feature_importance_{args.model}.tsv and {args.outdir}/{args.outname}_feature_importance_{args.model}.png"
     )
 
-    if args.shap:
-        logging.info(f"Calculating SHAP values (can be slow for big datasets)")
+    if args.shap is not None:
+        logging.info(f"Calculating SHAP values (can be slow for big datasets)")               
+        if args.shap == ["approximate"]:
+            approximate=True
+            logging.info("Using approximate=True for shap_values")
+        elif args.shap == []:
+            approximate = False
+        else:
+            approximate = False
+            logging.info("--shap can only be empty or 'approximate', ignoring")
+
         plot_size = None if args.plot_size == 1 else (args.plot_size, args.plot_size)
-        shap_values = shap.Explainer(model).shap_values(predictions[predictor_columns])
+        shap_values = shap.Explainer(model).shap_values(predictions[predictor_columns],
+                                                        approximate=approximate)
         plt.figure()
         shap.summary_plot(
             shap_values,

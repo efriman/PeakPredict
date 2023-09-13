@@ -158,10 +158,9 @@ def parse_args_overlap_peaks():
     )
     parser.add_argument(
         "--shap",
-        action="store_true",
-        default=False,
+        nargs="*",
         required=False,
-        help="""Specify if you want to generate SHAP value plots""",
+        help="""Specify if you want to generate SHAP value plots. Use '--shap approximate' for faster calculation""",
     )
     parser.add_argument(
         "--plot_size",
@@ -307,7 +306,7 @@ def main():
     if args.predict_column is not None:
         if args.balance:
             if args.maximum_per_category > 0:
-                logging.info("balance supersedes maximum_per_category")
+                logging.info("--balance supersedes --maximum_per_category")
             smallest = min(
                 overlap_table.groupby(args.predict_column).size().reset_index()[0]
             )
@@ -428,13 +427,22 @@ def main():
             f"Saved feature importance as {args.outdir}/{args.outname}_feature_importance_{args.model}.tsv and {args.outdir}/{args.outname}_feature_importance_{args.model}.png"
         )
 
-        if args.shap:
-            logging.info(f"Calculating SHAP values (can be slow for big datasets)")
+        if args.shap is not None:
+            logging.info(f"Calculating SHAP values (can be slow for big datasets)")               
+            if args.shap == ["approximate"]:
+                approximate=True
+                logging.info("Using approximate=True for shap_values")
+            elif args.shap == []:
+                approximate = False
+            else:
+                approximate = False
+                logging.info("--shap can only be empty or 'approximate', ignoring")
+
             plot_size = (
                 None if args.plot_size == 1 else (args.plot_size, args.plot_size)
             )
             shap_values = shap.Explainer(model).shap_values(
-                predictions[predictor_columns]
+                predictions[predictor_columns], approximate=approximate
             )
             plt.figure()
             shap.summary_plot(

@@ -29,7 +29,7 @@ Outputs from predictions are:
 
 -Feature importance graph (For some models, this is done using permutation test, which can take time)
 
--If `--shap` is set, SHAP values 
+-If `--shap` is set, SHAP values (use  `--shap approximate` for large datasets for faster calculation)
 
 All models from [scikit-learn](https://scikit-learn.org/) are available to use. Some models might require categorical or numerical values specifically.
 

@@ -204,7 +204,7 @@ def extract_feature_importance(model, X, y):
         feature_importance = pd.DataFrame(
             {"Feature": X.columns, "Importance": avg_importance}
         )
-        feature_importance = feature_importance.sort_values("Importance")
+        feature_importance = feature_importance.sort_values("Importance").reset_index(drop=True)
     return feature_importance
 
 
