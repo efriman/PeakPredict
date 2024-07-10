@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/645309255.svg)](https://zenodo.org/doi/10.5281/zenodo.12706471)
+
 # PeakPredict
 > Peak overlaps and feature predictions
 
